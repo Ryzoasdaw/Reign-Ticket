@@ -60,10 +60,13 @@ client.on('messageCreate', async message => {
             ]);
 
         const row = new ActionRowBuilder().addComponents(selectMenu);
+        
+        // تم إضافة الصورة هنا أيضاً للوحة الرئيسية للـ !setup-tickets
         const embed = new EmbedBuilder()
             .setColor(0x2f3136)
             .setTitle('🎫 نظام الدعم والتذاكر')
-            .setDescription('يرجى اختيار القسم المناسب من القائمة المنسدلة أدناه لفتح تذكرة جديدة وسيتم خدمتكم في أقرب وقت.');
+            .setDescription('يرجى اختيار القسم المناسب من القائمة المنسدلة أدناه لفتح تذكرة جديدة وسيتم خدمتكم في أقرب وقت.')
+            .setImage('https://media.discordapp.net/attachments/1531612317307899965/1531624502474051724/0303E296-7BB4-4B67-9FB9-F87851521A41.webp?ex=6a69e3f9&is=6a689279&hm=de37f69cc06c0f22008881950f5816ceb8fa8fc32abd66b7b71be91c9825319b&=&format=webp&width=1248&height=685');
 
         await message.channel.send({ embeds: [embed], components: [row] });
         await message.delete().catch(() => {});
@@ -146,11 +149,10 @@ client.on('interactionCreate', async interaction => {
                 new ButtonBuilder().setCustomId('btn_admin').setLabel('طلب إداري آخر').setStyle(ButtonStyle.Secondary).setEmoji('🔄')
             );
 
-            // تصميم الإمبد مع الصورة مثل الصورة التي أرسلتها
             const embed = new EmbedBuilder()
                 .setColor(0x2f3136)
                 .setDescription(`نوع التذكرة: **${ticketName}**\n\nأهلاً بك <@${member.id}>، تم فتح التذكرة بنجاح. يرجى كتابة تفاصيل طلبك بانتظار رد المختصين.`)
-                .setImage('https://media.discordapp.net/attachments/1531612317307899965/1531624502474051724/0303E296-7BB4-4B67-9FB9-F87851521A41.webp?ex=6a69e3f9&is=6a689279&hm=de37f69cc06c0f22008881950f5816ceb8fa8fc32abd66b7b71be91c9825319b&=&format=webp&width=1248&height=685'); // استبدل النص برابط الصورة المباشر (مثل رابط صورة في ديسكورد)
+                .setImage('https://media.discordapp.net/attachments/1531612317307899965/1531624502474051724/0303E296-7BB4-4B67-9FB9-F87851521A41.webp?ex=6a69e3f9&is=6a689279&hm=de37f69cc06c0f22008881950f5816ceb8fa8fc32abd66b7b71be91c9825319b&=&format=webp&width=1248&height=685');
 
             const mentions = targetRoleIds.map(id => `<@&${id}>`).join(' ') + ` , <@${member.id}>`;
 
