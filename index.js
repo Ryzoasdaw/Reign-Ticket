@@ -84,56 +84,47 @@ client.on('interactionCreate', async interaction => {
 
         let ticketName = 'تذكرة';
         let categoryId = process.env.TICKET_CATEGORY_ID;
-        let targetRoleIds = [guild.id];
+        let targetRoleIds = [];
 
         switch (selectedValue) {
             case 'ticket_management': {
                 ticketName = 'التواصل-مع-الإدارة';
                 const envVal = process.env.SUPPORT_ROLE_MANAGEMENT;
-                targetRoleIds = envVal ? envVal.split(',').map(id => id.trim()).filter(Boolean) : [guild.id];
+                targetRoleIds = envVal ? envVal.split(',').map(id => id.trim()).filter(Boolean) : [];
                 break;
             }
             case 'ticket_complaint': {
                 ticketName = 'شكوى';
                 const envVal = process.env.SUPPORT_ROLE_COMPLAINT;
-                targetRoleIds = envVal ? envVal.split(',').map(id => id.trim()).filter(Boolean) : [guild.id];
+                targetRoleIds = envVal ? envVal.split(',').map(id => id.trim()).filter(Boolean) : [];
                 break;
             }
             case 'ticket_role': {
                 ticketName = 'طلب-رول';
                 const envVal = process.env.SUPPORT_ROLE_ROLE;
-                targetRoleIds = envVal ? envVal.split(',').map(id => id.trim()).filter(Boolean) : [guild.id];
+                targetRoleIds = envVal ? envVal.split(',').map(id => id.trim()).filter(Boolean) : [];
                 break;
             }
             case 'ticket_other': {
                 ticketName = 'أخرى';
                 const envVal = process.env.SUPPORT_ROLE_OTHER;
-                targetRoleIds = envVal ? envVal.split(',').map(id => id.trim()).filter(Boolean) : [guild.id];
+                targetRoleIds = envVal ? envVal.split(',').map(id => id.trim()).filter(Boolean) : [];
                 break;
             }
         }
 
         try {
+            // منع الجميع وصاحب التذكرة فقط هو من يراها في البداية
             const permissionOverwrites = [
                 {
-                    // منع الجميع تماماً من رؤية القناة أو قراءة الرسائل فيها
                     id: guild.id,
                     denied: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
                 },
                 {
-                    // السماح لصاحب التذكرة حصرياً
                     id: member.id,
                     allowed: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
                 }
             ];
-
-            // إضافة رتب الإدارة المحددة
-            targetRoleIds.forEach(roleId => {
-                permissionOverwrites.push({
-                    id: roleId,
-                    allowed: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
-                });
-            });
 
             const ticketChannel = await guild.channels.create({
                 name: `${ticketName}-${member.user.username}`,
@@ -142,7 +133,7 @@ client.on('interactionCreate', async interaction => {
                 permissionOverwrites: permissionOverwrites
             });
 
-            activeTickets.set(ticketChannel.id, { ownerId: member.id, claimedBy: null });
+            activeTickets.set(ticketChannel.id, { ownerId: member.id, claimedBy: null, allowedRoles: targetRoleIds });
 
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('btn_close').setLabel('إغلاق').setStyle(ButtonStyle.Danger).setEmoji('🔒'),
@@ -153,10 +144,11 @@ client.on('interactionCreate', async interaction => {
 
             const embed = new EmbedBuilder()
                 .setColor(0x2f3136)
-                .setDescription(`نوع التذكرة: **${ticketName}**\n\nأهلاً بك <@${member.id}>، تم فتح التذكرة بنجاح. يرجى كتابة تفاصيل طلبك بانتظار رد المختصين.`)
+                .setDescription(`نوع التذكرة: **${ticketName}**\n\nأهلاً بك <@${member.id}>، تم فتح التذكرة بنجاح. يرجى كتابة تفاصيل طلبك بانتظار استلامها من قِبل الإدارة.`)
                 .setImage('https://cdn.discordapp.com/attachments/1526201910179397646/1531564468704903199/0303E296-7BB4-4B67-9FB9-F87851521A41.png');
 
-            const mentions = targetRoleIds.map(id => `<@&${id}>`).join(' ') + ` , <@${member.id}>`;
+            // عمل منشن لرتب الدعم لكي يصلهم التنبيه فقط دون أن يمتلكوا صلاحية الرؤية التلقائية إلا بعد الاستلام
+            const mentions = targetRoleIds.length > 0 ? targetRoleIds.map(id => `<@&${id}>`).join(' ') + ` , <@${member.id}>` : `<@${member.id}>`;
 
             await ticketChannel.send({
                 content: mentions,
@@ -168,7 +160,7 @@ client.on('interactionCreate', async interaction => {
 
         } catch (error) {
             console.error(error);
-            await interaction.editReply({ content: '❌ حدث خطأ أثناء إنشاء التذكرة، تأكد من صلاحيات البوت وآيديات الرتب في ملف البيئة (.env).' });
+            await interaction.editReply({ content: '❌ حدث خطأ أثناء إنشاء التذكرة، تأكد من صلاحيات البوت وآيديات الرتب في ملف البيئة (EV).' });
         }
     }
 
@@ -177,6 +169,14 @@ client.on('interactionCreate', async interaction => {
         const ticketData = activeTickets.get(channel.id);
 
         if (!ticketData) return;
+
+        const isOwner = interaction.user.id === ticketData.ownerId;
+        const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator) || 
+                        (ticketData.allowedRoles && ticketData.allowedRoles.some(roleId => interaction.member.roles.cache.has(roleId)));
+
+        if (!isOwner && !isAdmin) {
+            return interaction.reply({ content: '❌ ليس لديك صلاحية لاستخدام أزرار التحكم في هذه التذكرة!', ephemeral: true });
+        }
 
         if (interaction.customId === 'btn_close') {
             await interaction.reply({ content: '🔒 جاري إغلاق وحذف التذكرة خلال 5 ثوانٍ...' });
@@ -189,8 +189,17 @@ client.on('interactionCreate', async interaction => {
             if (ticketData.claimedBy) {
                 return interaction.reply({ content: `❌ هذه التذكرة مستلمة بالفعل بواسطة <@${ticketData.claimedBy}>`, ephemeral: true });
             }
+            
             ticketData.claimedBy = interaction.user.id;
-            await interaction.reply({ content: `👤 تم استلام التذكرة بواسطة الإداري: <@${interaction.user.id}>` });
+
+            // منح الإداري الذي ضغط استلام صلاحية رؤية الروم والكتابة فيه رسمياً
+            await channel.permissionOverwrites.edit(interaction.user.id, {
+                ViewChannel: true,
+                SendMessages: true,
+                ReadMessageHistory: true
+            }).catch(() => {});
+
+            await interaction.reply({ content: `👤 تم استلام التذكرة بواسطة الإداري: <@${interaction.user.id}> وأصبح بإمكانه رؤيتها والتعامل معها.` });
         }
         else if (interaction.customId === 'btn_call') {
             await interaction.reply({ content: `📢 تم إرسال تنبيه واستدعاء بواسطة <@${interaction.user.id}>.` });
