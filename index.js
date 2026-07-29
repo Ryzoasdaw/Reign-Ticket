@@ -114,22 +114,22 @@ client.on('interactionCreate', async interaction => {
         }
 
         try {
-            // منع الجميع تماماً، والسماح لصاحب التذكرة ورتب الدعم الخاصة بالقسم فقط
+            // إعداد الصلاحيات: حرمان الـ everyone تماماً والسماح فقط لصاحب التذكرة ورتب الدعم المحددة
             const permissionOverwrites = [
                 {
                     id: guild.id,
-                    denied: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
+                    deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
                 },
                 {
                     id: member.id,
-                    allowed: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
+                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
                 }
             ];
 
             targetRoleIds.forEach(roleId => {
                 permissionOverwrites.push({
                     id: roleId,
-                    allowed: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
+                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
                 });
             });
 
@@ -151,7 +151,7 @@ client.on('interactionCreate', async interaction => {
 
             const embed = new EmbedBuilder()
                 .setColor(0x2f3136)
-                .setDescription(`نوع التذكرة: **${ticketName}**\n\nأهلاً بك <@${member.id}>، تم فتح التذكرة بنجاح. يرجى كتابة تفاصيل طلبك بانتظار رد فريق الدعم المختص.`)
+                .setDescription(`نوع التذكرة: **${ticketName}**\n\nأهلاً بك <@${member.id}>، تم فتح التذكرة بنجاح. يرجى كتابة تفاصيل طلبك بانتظار رد المختصين.`)
                 .setImage('https://cdn.discordapp.com/attachments/1526201910179397646/1531564468704903199/0303E296-7BB4-4B67-9FB9-F87851521A41.png');
 
             const mentions = targetRoleIds.length > 0 ? targetRoleIds.map(id => `<@&${id}>`).join(' ') + ` , <@${member.id}>` : `<@${member.id}>`;
@@ -164,7 +164,7 @@ client.on('interactionCreate', async interaction => {
 
             await interaction.editReply({ content: `✅ تم إنشاء تذكرتك بنجاح: <#${ticketChannel.id}>` });
 
-        } catch (error) {
+        } (error) => {
             console.error(error);
             await interaction.editReply({ content: '❌ حدث خطأ أثناء إنشاء التذكرة، تأكد من صلاحيات البوت وآيديات الرتب في ملف البيئة (EV).' });
         }
