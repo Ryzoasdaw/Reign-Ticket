@@ -61,7 +61,6 @@ client.on('messageCreate', async message => {
 
         const row = new ActionRowBuilder().addComponents(selectMenu);
         
-        // إعداد الإمبد الرئيسي مع الصورة المباشرة بصيغة PNG
         const embed = new EmbedBuilder()
             .setColor(0x2f3136)
             .setTitle('🎫 نظام الدعم والتذاكر')
@@ -115,10 +114,11 @@ client.on('interactionCreate', async interaction => {
         }
 
         try {
+            // تحديث الصلاحيات لمنع الجميع والسماح لصاحب التذكرة والرتب المحددة فقط
             const permissionOverwrites = [
                 {
                     id: guild.id,
-                    denied: [PermissionFlagsBits.ViewChannel]
+                    denied: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
                 },
                 {
                     id: member.id,
