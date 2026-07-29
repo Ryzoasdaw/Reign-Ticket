@@ -114,18 +114,20 @@ client.on('interactionCreate', async interaction => {
         }
 
         try {
-            // تحديث الصلاحيات لمنع الجميع والسماح لصاحب التذكرة والرتب المحددة فقط
             const permissionOverwrites = [
                 {
+                    // منع الجميع تماماً من رؤية القناة أو قراءة الرسائل فيها
                     id: guild.id,
                     denied: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
                 },
                 {
+                    // السماح لصاحب التذكرة حصرياً
                     id: member.id,
                     allowed: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
                 }
             ];
 
+            // إضافة رتب الإدارة المحددة
             targetRoleIds.forEach(roleId => {
                 permissionOverwrites.push({
                     id: roleId,
