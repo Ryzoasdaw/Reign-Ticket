@@ -114,7 +114,7 @@ client.on('interactionCreate', async interaction => {
         }
 
         try {
-            // منع الجميع وصاحب التذكرة فقط هو من يراها في البداية
+            // منع الجميع تماماً، والسماح لصاحب التذكرة ورتب الدعم الخاصة بالقسم فقط
             const permissionOverwrites = [
                 {
                     id: guild.id,
@@ -125,6 +125,13 @@ client.on('interactionCreate', async interaction => {
                     allowed: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
                 }
             ];
+
+            targetRoleIds.forEach(roleId => {
+                permissionOverwrites.push({
+                    id: roleId,
+                    allowed: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
+                });
+            });
 
             const ticketChannel = await guild.channels.create({
                 name: `${ticketName}-${member.user.username}`,
@@ -144,10 +151,9 @@ client.on('interactionCreate', async interaction => {
 
             const embed = new EmbedBuilder()
                 .setColor(0x2f3136)
-                .setDescription(`نوع التذكرة: **${ticketName}**\n\nأهلاً بك <@${member.id}>، تم فتح التذكرة بنجاح. يرجى كتابة تفاصيل طلبك بانتظار استلامها من قِبل الإدارة.`)
+                .setDescription(`نوع التذكرة: **${ticketName}**\n\nأهلاً بك <@${member.id}>، تم فتح التذكرة بنجاح. يرجى كتابة تفاصيل طلبك بانتظار رد فريق الدعم المختص.`)
                 .setImage('https://cdn.discordapp.com/attachments/1526201910179397646/1531564468704903199/0303E296-7BB4-4B67-9FB9-F87851521A41.png');
 
-            // عمل منشن لرتب الدعم لكي يصلهم التنبيه فقط دون أن يمتلكوا صلاحية الرؤية التلقائية إلا بعد الاستلام
             const mentions = targetRoleIds.length > 0 ? targetRoleIds.map(id => `<@&${id}>`).join(' ') + ` , <@${member.id}>` : `<@${member.id}>`;
 
             await ticketChannel.send({
@@ -189,17 +195,8 @@ client.on('interactionCreate', async interaction => {
             if (ticketData.claimedBy) {
                 return interaction.reply({ content: `❌ هذه التذكرة مستلمة بالفعل بواسطة <@${ticketData.claimedBy}>`, ephemeral: true });
             }
-            
             ticketData.claimedBy = interaction.user.id;
-
-            // منح الإداري الذي ضغط استلام صلاحية رؤية الروم والكتابة فيه رسمياً
-            await channel.permissionOverwrites.edit(interaction.user.id, {
-                ViewChannel: true,
-                SendMessages: true,
-                ReadMessageHistory: true
-            }).catch(() => {});
-
-            await interaction.reply({ content: `👤 تم استلام التذكرة بواسطة الإداري: <@${interaction.user.id}> وأصبح بإمكانه رؤيتها والتعامل معها.` });
+            await interaction.reply({ content: `👤 تم استلام التذكرة بواسطة الإداري: <@${interaction.user.id}>` });
         }
         else if (interaction.customId === 'btn_call') {
             await interaction.reply({ content: `📢 تم إرسال تنبيه واستدعاء بواسطة <@${interaction.user.id}>.` });
