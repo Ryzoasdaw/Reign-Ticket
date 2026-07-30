@@ -22,7 +22,7 @@ const client = new Client({
 const activeTickets = new Map();
 
 client.on('ready', () => {
-    console.log(`🤖 بوت التكتات جاهز ومتصل باسم: ${client.user.tag}`);
+    console.log(`🤖 البوت جاهز ومتصل باسم: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async message => {
@@ -110,7 +110,7 @@ client.on('interactionCreate', async interaction => {
         }
 
         try {
-            // إعداد الصلاحيات: حرمان الـ everyone تماماً والسماح فقط لصاحب التذكرة ورتب الدعم المحددة
+            // صلاحيات الأساسية: إخفاء القناة عن الجميع وإظهارها للمستخدم فقط
             const permissionOverwrites = [
                 {
                     id: guild.id,
@@ -122,21 +122,35 @@ client.on('interactionCreate', async interaction => {
                 }
             ];
 
-            targetRoleIds.forEach(roleId => {
-                permissionOverwrites.push({
-                    id: roleId,
-                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
-                });
-            });
+            // التأكد من أن الرتب المحددة موجودة بالكامل في السيرفر لمنع حدوث أي خطأ
+            const validRoleIds = [];
+            for (const roleId of targetRoleIds) {
+                const roleExists = guild.roles.cache.has(roleId);
+                if (roleExists) {
+                    validRoleIds.push(roleId);
+                    permissionOverwrites.push({
+                        id: roleId,
+                        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
+                    });
+                } else {
+                    console.warn(`⚠️ الرتبة ذات الآيدي (${roleId}) غير موجودة في هذا السيرفر!`);
+                }
+            }
+
+            // فحص الكاتيجوري
+            let parentCategory = null;
+            if (categoryId && guild.channels.cache.has(categoryId)) {
+                parentCategory = categoryId;
+            }
 
             const ticketChannel = await guild.channels.create({
                 name: `${ticketName}-${member.user.username}`,
                 type: ChannelType.GuildText,
-                parent: categoryId || null,
+                parent: parentCategory,
                 permissionOverwrites: permissionOverwrites
             });
 
-            activeTickets.set(ticketChannel.id, { ownerId: member.id, claimedBy: null, allowedRoles: targetRoleIds });
+            activeTickets.set(ticketChannel.id, { ownerId: member.id, claimedBy: null, allowedRoles: validRoleIds });
 
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('btn_close').setLabel('إغلاق').setStyle(ButtonStyle.Danger).setEmoji('🔒'),
@@ -150,7 +164,7 @@ client.on('interactionCreate', async interaction => {
                 .setDescription(`نوع التذكرة: **${ticketName}**\n\nأهلاً بك <@${member.id}>، تم فتح التذكرة بنجاح. يرجى كتابة تفاصيل طلبك بانتظار رد المختصين.`)
                 .setImage('https://cdn.discordapp.com/attachments/1526201910179397646/1531564468704903199/0303E296-7BB4-4B67-9FB9-F87851521A41.png');
 
-            const mentions = targetRoleIds.length > 0 ? targetRoleIds.map(id => `<@&${id}>`).join(' ') + ` , <@${member.id}>` : `<@${member.id}>`;
+            const mentions = validRoleIds.length > 0 ? validRoleIds.map(id => `<@&${id}>`).join(' ') + ` , <@${member.id}>` : `<@${member.id}>`;
 
             await ticketChannel.send({
                 content: mentions,
@@ -161,8 +175,8 @@ client.on('interactionCreate', async interaction => {
             await interaction.editReply({ content: `✅ تم إنشاء تذكرتك بنجاح: <#${ticketChannel.id}>` });
 
         } catch (error) {
-            console.error(error);
-            await interaction.editReply({ content: '❌ حدث خطأ أثناء إنشاء التذكرة، تأكد من صلاحيات البوت وآيديات الرتب في ملف البيئة (EV).' });
+            console.error("❌ تفاصيل الخطأ في إنشاء التذكرة:", error);
+            await interaction.editReply({ content: '❌ حدث خطأ أثناء إنشاء التذكرة، تأكد من صلاحيات البوت وآيديات الرتب في ملف البيئة (ENV).' });
         }
     }
 
