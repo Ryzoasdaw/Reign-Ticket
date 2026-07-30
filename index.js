@@ -110,11 +110,10 @@ client.on('interactionCreate', async interaction => {
         }
 
         try {
-            // صلاحيات الأساسية: إخفاء القناة عن الجميع وإظهارها للمستخدم فقط
             const permissionOverwrites = [
                 {
                     id: guild.id,
-                    deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
+                    deny: [PermissionFlagsBits.ViewChannel]
                 },
                 {
                     id: member.id,
@@ -122,25 +121,24 @@ client.on('interactionCreate', async interaction => {
                 }
             ];
 
-            // التأكد من أن الرتب المحددة موجودة بالكامل في السيرفر لمنع حدوث أي خطأ
             const validRoleIds = [];
             for (const roleId of targetRoleIds) {
-                const roleExists = guild.roles.cache.has(roleId);
-                if (roleExists) {
+                if (guild.roles.cache.has(roleId)) {
                     validRoleIds.push(roleId);
                     permissionOverwrites.push({
                         id: roleId,
                         allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
                     });
-                } else {
-                    console.warn(`⚠️ الرتبة ذات الآيدي (${roleId}) غير موجودة في هذا السيرفر!`);
                 }
             }
 
-            // فحص الكاتيجوري
+            // التحقق من وجود الكاتيجوري
             let parentCategory = null;
-            if (categoryId && guild.channels.cache.has(categoryId)) {
-                parentCategory = categoryId;
+            if (categoryId) {
+                const categoryChannel = guild.channels.cache.get(categoryId);
+                if (categoryChannel && categoryChannel.type === ChannelType.GuildCategory) {
+                    parentCategory = categoryId;
+                }
             }
 
             const ticketChannel = await guild.channels.create({
@@ -175,8 +173,11 @@ client.on('interactionCreate', async interaction => {
             await interaction.editReply({ content: `✅ تم إنشاء تذكرتك بنجاح: <#${ticketChannel.id}>` });
 
         } catch (error) {
-            console.error("❌ تفاصيل الخطأ في إنشاء التذكرة:", error);
-            await interaction.editReply({ content: '❌ حدث خطأ أثناء إنشاء التذكرة، تأكد من صلاحيات البوت وآيديات الرتب في ملف البيئة (ENV).' });
+            console.error("DETAILED ERROR LOG:", error);
+            // إظهار سبب الخطأ بالتحديد في الرسالة
+            await interaction.editReply({ 
+                content: `❌ حدث خطأ أثناء إنشاء التذكرة:\n\`\`\`${error.message || error}\`\`\`` 
+            });
         }
     }
 
