@@ -37,25 +37,25 @@ client.on('messageCreate', async message => {
                     label: 'التواصل مع الإدارة',
                     description: 'فتح تذكرة للتحدث مع الإدارة',
                     value: 'ticket_management',
-                    emoji: '🎫'
+                    emoji: ''
                 },
                 {
                     label: 'الشكاوي',
                     description: 'تقديم شكوى رسمية',
                     value: 'ticket_complaint',
-                    emoji: '⚠️'
+                    emoji: ''
                 },
                 {
                     label: 'طلب رول',
                     description: 'طلب رتبة أو صلاحية',
                     value: 'ticket_role',
-                    emoji: '⭐'
+                    emoji: ''
                 },
                 {
                     label: 'أخرى',
                     description: 'أسباب أخرى للتواصل',
                     value: 'ticket_other',
-                    emoji: '📌'
+                    emoji: ''
                 }
             ]);
 
@@ -63,7 +63,7 @@ client.on('messageCreate', async message => {
         
         const embed = new EmbedBuilder()
             .setColor(0x2f3136)
-            .setTitle('🎫 نظام الدعم والتذاكر')
+            .setTitle(' نظام الدعم والتذاكر')
             .setDescription('يرجى اختيار القسم المناسب من القائمة المنسدلة أدناه لفتح تذكرة جديدة وسيتم خدمتكم في أقرب وقت.')
             .setImage('https://cdn.discordapp.com/attachments/1526201910179397646/1531564468704903199/0303E296-7BB4-4B67-9FB9-F87851521A41.png');
 
