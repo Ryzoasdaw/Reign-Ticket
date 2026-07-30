@@ -22,7 +22,7 @@ const client = new Client({
 const activeTickets = new Map();
 
 client.on('ready', () => {
-    console.log(`🤖 البوت جاهز ومتصل باسم: ${client.user.tag}`);
+    console.log(`🤖 بوت التكتات جاهز ومتصل باسم: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async message => {
@@ -110,10 +110,11 @@ client.on('interactionCreate', async interaction => {
         }
 
         try {
+            // إعداد الصلاحيات: حرمان الـ everyone تماماً والسماح فقط لصاحب التذكرة ورتب الدعم المحددة
             const permissionOverwrites = [
                 {
                     id: guild.id,
-                    deny: [PermissionFlagsBits.ViewChannel]
+                    deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
                 },
                 {
                     id: member.id,
@@ -121,34 +122,21 @@ client.on('interactionCreate', async interaction => {
                 }
             ];
 
-            const validRoleIds = [];
-            for (const roleId of targetRoleIds) {
-                if (guild.roles.cache.has(roleId)) {
-                    validRoleIds.push(roleId);
-                    permissionOverwrites.push({
-                        id: roleId,
-                        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
-                    });
-                }
-            }
-
-            // التحقق من وجود الكاتيجوري
-            let parentCategory = null;
-            if (categoryId) {
-                const categoryChannel = guild.channels.cache.get(categoryId);
-                if (categoryChannel && categoryChannel.type === ChannelType.GuildCategory) {
-                    parentCategory = categoryId;
-                }
-            }
+            targetRoleIds.forEach(roleId => {
+                permissionOverwrites.push({
+                    id: roleId,
+                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
+                });
+            });
 
             const ticketChannel = await guild.channels.create({
                 name: `${ticketName}-${member.user.username}`,
                 type: ChannelType.GuildText,
-                parent: parentCategory,
+                parent: categoryId || null,
                 permissionOverwrites: permissionOverwrites
             });
 
-            activeTickets.set(ticketChannel.id, { ownerId: member.id, claimedBy: null, allowedRoles: validRoleIds });
+            activeTickets.set(ticketChannel.id, { ownerId: member.id, claimedBy: null, allowedRoles: targetRoleIds });
 
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('btn_close').setLabel('إغلاق').setStyle(ButtonStyle.Danger).setEmoji('🔒'),
@@ -162,7 +150,7 @@ client.on('interactionCreate', async interaction => {
                 .setDescription(`نوع التذكرة: **${ticketName}**\n\nأهلاً بك <@${member.id}>، تم فتح التذكرة بنجاح. يرجى كتابة تفاصيل طلبك بانتظار رد المختصين.`)
                 .setImage('https://cdn.discordapp.com/attachments/1526201910179397646/1531564468704903199/0303E296-7BB4-4B67-9FB9-F87851521A41.png');
 
-            const mentions = validRoleIds.length > 0 ? validRoleIds.map(id => `<@&${id}>`).join(' ') + ` , <@${member.id}>` : `<@${member.id}>`;
+            const mentions = targetRoleIds.length > 0 ? targetRoleIds.map(id => `<@&${id}>`).join(' ') + ` , <@${member.id}>` : `<@${member.id}>`;
 
             await ticketChannel.send({
                 content: mentions,
@@ -173,11 +161,8 @@ client.on('interactionCreate', async interaction => {
             await interaction.editReply({ content: `✅ تم إنشاء تذكرتك بنجاح: <#${ticketChannel.id}>` });
 
         } catch (error) {
-            console.error("DETAILED ERROR LOG:", error);
-            // إظهار سبب الخطأ بالتحديد في الرسالة
-            await interaction.editReply({ 
-                content: `❌ حدث خطأ أثناء إنشاء التذكرة:\n\`\`\`${error.message || error}\`\`\`` 
-            });
+            console.error(error);
+            await interaction.editReply({ content: '❌ حدث خطأ أثناء إنشاء التذكرة، تأكد من صلاحيات البوت وآيديات الرتب في ملف البيئة (EV).' });
         }
     }
 
