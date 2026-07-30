@@ -31,31 +31,27 @@ client.on('messageCreate', async message => {
     if (message.content === '!setup-tickets') {
         const selectMenu = new StringSelectMenuBuilder()
             .setCustomId('main_ticket_menu')
-            .setPlaceholder('اختر قسم التذكرة المناسب...')
+            .setPlaceholder('يرجى اختيار نوع التذكره')
             .addOptions([
                 {
                     label: 'التواصل مع الإدارة',
                     description: 'فتح تذكرة للتحدث مع الإدارة',
-                    value: 'ticket_management',
-                    emoji: ''
+                    value: 'ticket_management'
                 },
                 {
                     label: 'الشكاوي',
                     description: 'تقديم شكوى رسمية',
-                    value: 'ticket_complaint',
-                    emoji: ''
+                    value: 'ticket_complaint'
                 },
                 {
                     label: 'طلب رول',
                     description: 'طلب رتبة أو صلاحية',
-                    value: 'ticket_role',
-                    emoji: ''
+                    value: 'ticket_role'
                 },
                 {
                     label: 'أخرى',
                     description: 'أسباب أخرى للتواصل',
-                    value: 'ticket_other',
-                    emoji: ''
+                    value: 'ticket_other'
                 }
             ]);
 
@@ -63,7 +59,7 @@ client.on('messageCreate', async message => {
         
         const embed = new EmbedBuilder()
             .setColor(0x2f3136)
-            .setTitle(' نظام الدعم والتذاكر')
+            .setTitle('نظام الدعم والتذاكر')
             .setDescription('يرجى اختيار القسم المناسب من القائمة المنسدلة أدناه لفتح تذكرة جديدة وسيتم خدمتكم في أقرب وقت.')
             .setImage('https://cdn.discordapp.com/attachments/1526201910179397646/1531564468704903199/0303E296-7BB4-4B67-9FB9-F87851521A41.png');
 
@@ -164,7 +160,7 @@ client.on('interactionCreate', async interaction => {
 
             await interaction.editReply({ content: `✅ تم إنشاء تذكرتك بنجاح: <#${ticketChannel.id}>` });
 
-        } (error) => {
+        } catch (error) {
             console.error(error);
             await interaction.editReply({ content: '❌ حدث خطأ أثناء إنشاء التذكرة، تأكد من صلاحيات البوت وآيديات الرتب في ملف البيئة (EV).' });
         }
