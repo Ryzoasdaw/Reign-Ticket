@@ -15,14 +15,20 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers
     ]
 });
 
 const activeTickets = new Map();
 
-client.on('ready', () => {
-    console.log(`🤖 بوت التكتات جاهز ومتصل باسم: ${client.user.tag}`);
+client.on('ready', async () => {
+    console.log(`🤖 البوت جاهز ومتصل باسم: ${client.user.tag}`);
+    // جلب كافة بيانات السيرفرات في الذاكرة لتفادي أخطاء جلب الرتب
+    for (const [id, guild] of client.guilds.cache) {
+        await guild.roles.fetch().catch(() => {});
+        await guild.channels.fetch().catch(() => {});
+    }
 });
 
 client.on('messageCreate', async message => {
@@ -79,7 +85,7 @@ client.on('interactionCreate', async interaction => {
         const member = interaction.member;
 
         let ticketName = 'تذكرة';
-        let categoryId = process.env.TICKET_CATEGORY_ID;
+        let categoryId = process.env.TICKET_CATEGORY_ID ? process.env.TICKET_CATEGORY_ID.trim() : null;
         let targetRoleIds = [];
 
         switch (selectedValue) {
@@ -110,11 +116,11 @@ client.on('interactionCreate', async interaction => {
         }
 
         try {
-            // إعداد الصلاحيات: حرمان الـ everyone تماماً والسماح فقط لصاحب التذكرة ورتب الدعم المحددة
+            // تجهيز صلاحية العضو والسيرفر الرئيسي
             const permissionOverwrites = [
                 {
-                    id: guild.id,
-                    deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
+                    id: guild.roles.everyone.id,
+                    deny: [PermissionFlagsBits.ViewChannel]
                 },
                 {
                     id: member.id,
@@ -122,21 +128,37 @@ client.on('interactionCreate', async interaction => {
                 }
             ];
 
-            targetRoleIds.forEach(roleId => {
-                permissionOverwrites.push({
-                    id: roleId,
-                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
-                });
-            });
+            // جلب الرتب والتحقق منها بمرونة
+            const validRoleIds = [];
+            for (const roleId of targetRoleIds) {
+                const fetchedRole = await guild.roles.fetch(roleId).catch(() => null);
+                if (fetchedRole) {
+                    validRoleIds.push(roleId);
+                    permissionOverwrites.push({
+                        id: roleId,
+                        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
+                    });
+                }
+            }
 
+            // التحقق الجذري من وجود الكاتيجوري
+            let parentCategory = null;
+            if (categoryId) {
+                const fetchedCategory = await guild.channels.fetch(categoryId).catch(() => null);
+                if (fetchedCategory && fetchedCategory.type === ChannelType.GuildCategory) {
+                    parentCategory = categoryId;
+                }
+            }
+
+            // إنشاء قناة التذكرة
             const ticketChannel = await guild.channels.create({
                 name: `${ticketName}-${member.user.username}`,
                 type: ChannelType.GuildText,
-                parent: categoryId || null,
+                parent: parentCategory,
                 permissionOverwrites: permissionOverwrites
             });
 
-            activeTickets.set(ticketChannel.id, { ownerId: member.id, claimedBy: null, allowedRoles: targetRoleIds });
+            activeTickets.set(ticketChannel.id, { ownerId: member.id, claimedBy: null, allowedRoles: validRoleIds });
 
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('btn_close').setLabel('إغلاق').setStyle(ButtonStyle.Danger).setEmoji('🔒'),
@@ -150,7 +172,7 @@ client.on('interactionCreate', async interaction => {
                 .setDescription(`نوع التذكرة: **${ticketName}**\n\nأهلاً بك <@${member.id}>، تم فتح التذكرة بنجاح. يرجى كتابة تفاصيل طلبك بانتظار رد المختصين.`)
                 .setImage('https://cdn.discordapp.com/attachments/1526201910179397646/1531564468704903199/0303E296-7BB4-4B67-9FB9-F87851521A41.png');
 
-            const mentions = targetRoleIds.length > 0 ? targetRoleIds.map(id => `<@&${id}>`).join(' ') + ` , <@${member.id}>` : `<@${member.id}>`;
+            const mentions = validRoleIds.length > 0 ? validRoleIds.map(id => `<@&${id}>`).join(' ') + ` , <@${member.id}>` : `<@${member.id}>`;
 
             await ticketChannel.send({
                 content: mentions,
@@ -161,8 +183,10 @@ client.on('interactionCreate', async interaction => {
             await interaction.editReply({ content: `✅ تم إنشاء تذكرتك بنجاح: <#${ticketChannel.id}>` });
 
         } catch (error) {
-            console.error(error);
-            await interaction.editReply({ content: '❌ حدث خطأ أثناء إنشاء التذكرة، تأكد من صلاحيات البوت وآيديات الرتب في ملف البيئة (EV).' });
+            console.error("خطأ الإنشاء الأكيد:", error);
+            await interaction.editReply({ 
+                content: `❌ متعذر إنشاء التذكرة! التفاصيل:\n\`\`\`${error.message}\`\`\`\n💡 **نصيحة:** أعطِ البوت صلاحية Administrator وارفعه لأعلى الرتب بالدسكورد.` 
+            });
         }
     }
 
